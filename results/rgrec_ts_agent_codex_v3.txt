@@ -6,6 +6,6 @@ out     A=   790.5714  R2-A=   +54.9286 (+6.9%)  95% [-7.8214, +128.0357] (-1.0%
 nfiles  A=     8.5714  R2-A=    +0.0000 (+0.0%)  95% [+0.0000, +0.0000] (+0.0%, +0.0%)
 recall  A=     1.0000  R2-A=    +0.0000 (+0.0%)  95% [+0.0000, +0.0000] (+0.0%, +0.0%)
 fresh   A= 14855.1786  R2-A=  +364.8929 (+2.5%)  95% [-2636.5000, +3336.5357] (-17.7%, +22.5%)
-A pass 28/28  (compiled 28, decl changed 28)  rg/run 2.64  rgrec/run 0.00
-R2 pass 28/28  (compiled 28, decl changed 28)  rg/run 0.14  rgrec/run 1.04
+A pass 28/28  (compiled 28, decl changed 28)  rg/run 2.64  moru-narrow/run 0.00
+R2 pass 28/28  (compiled 28, decl changed 28)  rg/run 0.14  moru-narrow/run 1.04
 failed: []

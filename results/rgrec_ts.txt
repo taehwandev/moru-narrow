@@ -2,7 +2,7 @@ TypeScript offline check (Next.js repo, ~2.2k ts/tsx files, ~222k lines; compile
 Rules frozen before the final run (sha256 prefix 7125ffb1; pilot of 20 separate candidates used to fix 2 tool bugs: tsconfig alias parsing, path normalisation).
 Final set: 180 sampled exported functions/arrow fns (unique declaration name, >=1 other file mentions it); 162 had >=1 compiler-error file.
 First-pass (frozen rules): files recalled 299/304 (98.4%); tasks fully recalled 157/162; error lines inside recommended ranges 387/437 (88.6%).
-Misses: 4x same facade-class call (route -> CutPlayService.method -> declaring file), 1x no-name wrapper chain (savePost, file has no mention).
+Misses: 4x calls made through a facade class (route -> Service.method -> declaring file), 1x no-name wrapper chain (the failing file never mentions the function).
 rg -w files 3.7 / lines 7 -> tier-1 files 2.0 / lines 5 (truth 1.9 files). rg>=5 files (n=26): 10.2/22 -> 5.6/14, recall 127/128. rg>=10 files (n=7): 20.1/41 -> 6.7/20, recall 43/44.
 Pilot (20 tasks, rules tuned here): 24/25 files.
 

@@ -6,8 +6,8 @@ out     A=   805.9091  R2-A=   -16.3182 (-2.0%)  95% [-57.4318, +24.1591] (-7.1%
 nfiles  A=     5.9318  R2-A=    +0.0227 (+0.4%)  95% [+0.0000, +0.0682] (+0.0%, +1.1%)
 recall  A=     0.9934  R2-A=    +0.0021 (+0.2%)  95% [+0.0000, +0.0062] (+0.0%, +0.6%)
 fresh   A= 14905.4091  R2-A= -1361.7955 (-9.1%)  95% [-4027.8636, +1218.1136] (-27.0%, +8.2%)
-A pass 43/44  (compiled 43, decl changed 44)  rg/run 2.39  rgrec/run 0.00
-R2 pass 43/44  (compiled 43, decl changed 44)  rg/run 0.11  rgrec/run 1.00
-failed: [('Drawer', 'A'), ('isVisibleThreadFeedItem', 'R2')]
+A pass 43/44  (compiled 43, decl changed 44)  rg/run 2.39  moru-narrow/run 0.00
+R2 pass 43/44  (compiled 43, decl changed 44)  rg/run 0.11  moru-narrow/run 1.00
+failed: 1 baseline run and 1 recommender run (task names omitted, private repository)
 
-NOTE: Codex pass 43/44 in both conditions; failures were Drawer (A) and isVisibleThreadFeedItem (R2, the declaring-file case above).
+NOTE: Codex pass 43/44 in both conditions; the failures were one baseline run (a component task) and one recommender run (the declaring-file case above).
