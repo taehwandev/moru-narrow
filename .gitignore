@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+.DS_Store
+# VibeGuard local secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.dist
+!.env.defaults
+!.env.schema
+!.env*.default
+!.env*.defaults
+!.env*.dist
+!.env*.example
+!.env*.sample
+!.env*.schema
+!.env*.template
+.env.vibeguard.local
+
+# local agent run state
+.moru/

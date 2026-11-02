@@ -1,0 +1,17 @@
+ctx     A=171901.7045  R2-A=-49067.1818 (-28.5%)  95% [-79108.3636, -18301.1136] (-46.0%, -10.6%)
+cmds    A=    15.3182  R2-A=    -1.2045 (-7.9%)  95% [-3.9318, +1.1364] (-25.7%, +7.4%)
+rg      A=     2.6136  R2-A=    -2.3864 (-91.3%)  95% [-2.8182, -1.9773] (-107.8%, -75.7%)
+sec     A=    29.0227  R2-A=    -3.2273 (-11.1%)  95% [-8.3182, +2.0682] (-28.7%, +7.1%)
+out     A=  5008.3182  R2-A=  -298.3182 (-6.0%)  95% [-1259.3182, +803.1591] (-25.1%, +16.0%)
+nfiles  A=     5.7727  R2-A=    -0.6136 (-10.6%)  95% [-1.5909, +0.2273] (-27.6%, +3.9%)
+recall  A=     0.9727  R2-A=    -0.0795 (-8.2%)  95% [-0.1818, +0.0114] (-18.7%, +1.2%)
+cost    A=     0.0077  R2-A=    -0.0012 (-15.4%)  95% [-0.0024, +0.0001] (-31.0%, +1.7%)
+A pass 43/44  (compiled 44, decl changed 43)  rg/run 2.61  rgrec/run 0.00
+R2 pass 33/44  (compiled 36, decl changed 41)  rg/run 0.23  rgrec/run 1.07
+failed: [('Switch', 'A'), ('AuthProvider', 'R2'), ('buildWorkspaceNewPostHref', 'R2'), ('Popover', 'R2'), ('PopoverTrigger', 'R2'), ('isVisibleThreadFeedItem', 'R2'), ('isPostShareThread', 'R2'), ('readTableTheme', 'R2'), ('fetchAllPostMetrics', 'R2'), ('Drawer', 'R2'), ('Switch', 'R2'), ('PostSurveyEditorDialog', 'R2')]
+
+NOTE (post-hoc diagnosis of the 11 R2 failures)
+- All 11: compiler-truth files were inside the tier-1 list (recommender correct for the files it ranks).
+- 3 (Popover, PopoverTrigger, Drawer): React components; the agent changed nothing, arguing a positional first param is impossible in JSX. A run solved Drawer by treating traceId as a first prop. Task is ill-posed for components.
+- >=4 (readTableTheme, isPostShareThread, isVisibleThreadFeedItem, buildWorkspaceNewPostHref): the remaining tsc errors were calls INSIDE THE DECLARING FILE. rgrec_ts put the declaring file's own strong lines into tier 2 (hidden by default) because the declaring file does not import itself; the offline truth also excluded the declaring file, so the offline check could not see it.
+- 4 not analysed: AuthProvider, fetchAllPostMetrics, Switch, PostSurveyEditorDialog.

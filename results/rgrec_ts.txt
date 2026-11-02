@@ -1,0 +1,14 @@
+TypeScript offline check (Next.js repo, ~2.2k ts/tsx files, ~222k lines; compiler truth via tsc API: required first param `traceId: string` added in memory)
+Rules frozen before the final run (sha256 prefix 7125ffb1; pilot of 20 separate candidates used to fix 2 tool bugs: tsconfig alias parsing, path normalisation).
+Final set: 180 sampled exported functions/arrow fns (unique declaration name, >=1 other file mentions it); 162 had >=1 compiler-error file.
+First-pass (frozen rules): files recalled 299/304 (98.4%); tasks fully recalled 157/162; error lines inside recommended ranges 387/437 (88.6%).
+Misses: 4x same facade-class call (route -> CutPlayService.method -> declaring file), 1x no-name wrapper chain (savePost, file has no mention).
+rg -w files 3.7 / lines 7 -> tier-1 files 2.0 / lines 5 (truth 1.9 files). rg>=5 files (n=26): 10.2/22 -> 5.6/14, recall 127/128. rg>=10 files (n=7): 20.1/41 -> 6.7/20, recall 43/44.
+Pilot (20 tasks, rules tuned here): 24/25 files.
+
+Two-hop rule (v2) on a NEW disjoint set (200 sampled functions, 186 with truth; v2 frozen sha256 prefix 8ef6db99 before this run)
+v1 (frozen, 1 hop):  files 301/304 (99.0%), tasks fully recalled 183/186, lines in range 372/378 (98.4%)
+v2 (two-hop):        files 302/304 (99.3%), tasks fully recalled 184/186, lines in range 373/378 (98.7%)
+Tier-1 size unchanged: rg 2.9 files / 6 lines -> 1.7 / 4 (truth 1.6). rg>=5 files (n=18): 7.6/17 -> 4.7/13, recall 77/77. rg>=10 (n=3): 16.7/39 -> 7.7/25, recall 23/23.
+Remaining misses (both v1 and v2): 2 files whose error site never mentions the function name (type flows through another function) - not findable by any rg-based tool.
+v2 on the earlier 180 set (rule motivated by it, not independent): 303/304.

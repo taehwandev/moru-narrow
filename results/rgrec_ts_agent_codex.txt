@@ -1,0 +1,13 @@
+ctx     A= 93174.5000  R2-A= -4934.1591 (-5.3%)  95% [-13853.4773, +2949.7045] (-14.9%, +3.2%)
+cmds    A=     3.3636  R2-A=    -0.0682 (-2.0%)  95% [-0.3636, +0.2273] (-10.8%, +6.8%)
+rg      A=     2.3864  R2-A=    -2.2727 (-95.2%)  95% [-2.5000, -2.0682] (-104.8%, -86.7%)
+sec     A=    16.5909  R2-A=    +0.2955 (+1.8%)  95% [-0.5909, +1.1364] (-3.6%, +6.8%)
+out     A=   805.9091  R2-A=   -16.3182 (-2.0%)  95% [-57.4318, +24.1591] (-7.1%, +3.0%)
+nfiles  A=     5.9318  R2-A=    +0.0227 (+0.4%)  95% [+0.0000, +0.0682] (+0.0%, +1.1%)
+recall  A=     0.9934  R2-A=    +0.0021 (+0.2%)  95% [+0.0000, +0.0062] (+0.0%, +0.6%)
+fresh   A= 14905.4091  R2-A= -1361.7955 (-9.1%)  95% [-4027.8636, +1218.1136] (-27.0%, +8.2%)
+A pass 43/44  (compiled 43, decl changed 44)  rg/run 2.39  rgrec/run 0.00
+R2 pass 43/44  (compiled 43, decl changed 44)  rg/run 0.11  rgrec/run 1.00
+failed: [('Drawer', 'A'), ('isVisibleThreadFeedItem', 'R2')]
+
+NOTE: Codex pass 43/44 in both conditions; failures were Drawer (A) and isVisibleThreadFeedItem (R2, the declaring-file case above).
