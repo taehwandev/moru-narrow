@@ -1,10 +1,24 @@
 [project]
 name = "moru-narrow"
-version = "0.0.1"
+version = "26.45.0"
 description = "Narrow `rg -w <Name>` to the files and lines you must edit after a signature change (Kotlin+Gradle, TypeScript)."
-requires-python = ">=3.9"
 readme = "README.md"
-# license intentionally unset until decided
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "taehwandev" }]
+keywords = ["ripgrep", "rg", "refactoring", "coding-agent", "kotlin", "typescript", "claude-code", "codex"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development",
+]
+
+[project.urls]
+Homepage = "https://github.com/taehwandev/moru-narrow"
+Issues = "https://github.com/taehwandev/moru-narrow/issues"
 
 [project.scripts]
 moru-narrow = "moru_narrow.__main__:main"

@@ -169,6 +169,10 @@ check could not see it. Fix: v3 keeps those lines in tier 1. Lesson: validate wi
 
 The evaluation harnesses (agent runners, compiler-truth generators, scorers) are not in this repository yet: they carry local paths and private repository details and need a scrub first. `results/` holds the aggregate tables. The method is described above: compiler errors after adding a required first parameter are the ground truth; rules were frozen (hash recorded) before the fresh TypeScript set was scored.
 
+## Versioning
+
+Weekly CalVer `YY.WW.N` (scheme `calver-weekly`), for example `26.45.0`: two-digit year, week number, and a release count that starts at `0` each week and counts published packages. Weeks follow the Korean calendar (Asia/Seoul, Monday-start weeks). Git tags use a `v` prefix (`v26.45.0`); the package metadata omits it. Python normalises a zero-padded week, so week 5 appears as `26.5.0` on PyPI. This is a date-based version, not a compatibility signal: while the tool is alpha, read the commit log before upgrading.
+
 ## Status
 
 Alpha. Not on PyPI or npm. No unit tests yet. The ranking was validated against compiler ground truth (see above); `--install` was only checked by hand in a temporary home directory (fresh install, re-run, `--project`, `--agents-md` idempotence). Issues and results from other repositories are welcome.
