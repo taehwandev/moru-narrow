@@ -18,8 +18,8 @@
 
 - **무엇을 하나:** `rg -w 이름` 뒤에, 고쳐야 할 소수의 파일과 줄 범위를 순위를 매겨 보여 주고 나머지는 `--all` 뒤로 숨긴다. 버리는 것은 없다.
 - **놓치는 파일이 있나:** 컴파일러를 정답으로 확인했다. Kotlin 과제 217개 모두에서 정답 파일이 전부 목록에 있었고(규칙 일부는 그 과제들을 보고 고쳤다), 새로 뽑은 TypeScript 세트에서는 194개 중 191개 과제(파일 기준 99.3%)였다. 드물게 놓치는 것은 이름이 아예 나오지 않는 파일이다.
-- **코딩 에이전트에게 도움이 되나:** 6개 시험 설정 어디에서도 컴파일 성공률이 기준보다 떨어지지 않았다. 컨텍스트 토큰은 다섯 설정에서 10~35% 줄었고, 여섯째(TypeScript의 Codex)는 오차와 구분되지 않는다.
-- **조건:** 에이전트에게 `rg`를 다시 돌리지 말라고 함께 알려 줄 때만 절감이 나왔다. 그 문장이 없으면 한 시험에서 비용이 10% 늘었다.
+- **코딩 에이전트에게 도움이 되나:** 6개 시험 설정 어디에서도 컴파일 성공률이 기준보다 떨어지지 않았다. 컨텍스트 토큰은 다섯 설정에서 9.8~34.5% 줄었고, 여섯째(TypeScript의 Codex)는 오차와 구분되지 않는다.
+- **조건:** 에이전트에게 `rg`를 다시 돌리지 말라고 함께 알려 줄 때만 절감이 나왔다. 그 문장이 없으면 한 시험(Kotlin, Haiku, 과제 57개)에서 비용이 10.3% [과제당 +0.0003, +0.0009 달러] 늘었다.
 
 ```text
 $ moru-narrow getGlobalTheme --repo ./my-next-app
@@ -34,15 +34,30 @@ hidden: tier 2 has 0 files (use --all to list them)
 
 ## 빠른 시작
 
-Python 3.9 이상과 [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)이 `PATH`에 있어야 한다. 다른 의존성은 없다.
+Python 3.9 이상과 [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)이 `PATH`에 있어야 한다. 다른 의존성은 없다. 모루 Core나 다른 도구는 필요 없다.
 
 ```bash
-git clone https://github.com/taehwandev/moru-narrow
-cd moru-narrow
-python3 -m moru_narrow <이름> --repo /path/to/your/project   # Kotlin+Gradle 또는 TypeScript, 자동 감지
+pipx install git+https://github.com/taehwandev/moru-narrow     # 또는: uv tool install git+https://... / pip install git+https://...
+moru-narrow <이름> --repo /path/to/your/project                # Kotlin+Gradle 또는 TypeScript, 자동 감지
 ```
 
-PyPI나 npm에는 올리지 않았다. `pyproject.toml`에 `moru-narrow`, `mnarrow` 콘솔 스크립트를 선언해 두었지만 pip 설치는 아직 시험하지 않았다.
+설치하지 않고 쓰려면 저장소를 내려받아 `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <이름> --repo ...`로 실행한다.
+
+아직 PyPI나 npm에는 올리지 않았다. `pip install git+...` 경로는 macOS의 깨끗한 가상환경(Python 3.9.6)에서 시험했고, 다른 플랫폼과 Python 버전은 시험하지 않았다.
+
+## 코딩 에이전트에 적용하기
+
+에이전트가 사용법을 알아야 도구가 도움이 된다(절감 효과 항목 참고: "`rg`를 다시 돌리지 마라"는 문장이 없으면 비용이 늘었다). 명령 하나로 그 지시를 등록한다.
+
+```bash
+moru-narrow --install                # 에이전트 스킬을 ~/.claude/skills/(Claude Code)와 ~/.agents/skills/(Codex 등 agent-skills 도구)에 설치
+moru-narrow --install --project      # 같은 내용을 ./.claude, ./.agents에 설치해서 git으로 팀과 공유
+moru-narrow --install --agents-md    # 스킬을 지원하지 않는 도구(예: Cursor)는 ./AGENTS.md에 표시 구간을 추가
+```
+
+다시 실행해도 안전하다. 이미 있는 `SKILL.md`는 그대로 두고(`--force`로 덮어쓴다), `AGENTS.md`의 표시 구간만 제자리에서 바꾸며 다른 내용은 건드리지 않는다. `--target claude|agents`로 스킬 설치 위치를 하나로 줄일 수 있다. 설치되는 문장은 영문 README의 인용문과 같고, 에이전트 시험에 쓴 지시를 바탕으로 했다(표현은 다르다).
+
+측정한 문장과 표현이 같지 않고, 마지막 문장(다른 작업이나 지원하지 않는 언어에서는 평범한 `rg`를 쓴다)은 새로 넣은 것이다. 시험 과제는 시그니처 변경뿐이었고 그에 맞춘 프롬프트만 썼다. 셸 명령을 실행할 수 있는 에이전트라면 `moru-narrow`를 직접 호출해도 된다.
 
 ## 왜 만들었나
 
@@ -51,7 +66,7 @@ PyPI나 npm에는 올리지 않았다. `pyproject.toml`에 `moru-narrow`, `mnarr
 에이전트는 그것을 전부 읽는다.
 
 코드 그래프 인덱스가 당연한 해법으로 보였다. 같은 Kotlin 저장소에서 문법 수준의 코드 그래프 인덱스를 측정했는데 에이전트 단계에서는
-효과가 없었다. 위치만 돌려줄 때는 측정 가능한 비용 감소가 없었고, 소스 코드를 돌려주면 비용이 +45.5% 늘었다.
+효과가 없었다. 위치만 돌려줄 때는 측정 가능한 비용 차이가 없었고, 소스 코드를 돌려주면 비용이 약 +45.5% 늘었다(그 실행에는 MCP 연결 부담도 섞여 있어서 증가분 일부는 그래프 자체 때문이 아니다).
 인덱스를 만들어야 하고, 편집할 때마다 동기화해야 하며(동기화 전에는 오래된 결과가 나온다), `moru-narrow`는 `rg`를 그때그때 실행하므로
 구축 단계도 오래된 결과도 없다.
 
@@ -128,8 +143,9 @@ moru-narrow <이름> [--repo DIR] [--decl FILE] [--all] [--json] [--lang kotlin|
 | TypeScript, Codex terra, 28 x 2 | 56/56 -> 56/56 | -6.5% [-13.5%, 0.0%] (0에 닿음) | 해당 없음 |
 
 **도구만큼 에이전트에게 주는 지시가 중요하다.** 첫 Kotlin 실험에서는 에이전트가 같은 목록을 받고도 그 뒤에 `rg`를 계속
-다시 돌렸고(실행당 3.6~4.5번), 더 큰 세트에서 비용이 오히려 10.3% **늘었다**. "이 목록에서 호출 지점을 바로 고치고, 같은 이름으로
-`rg`를 다시 돌리지 마라. 목록이 불완전해 보일 때만 --all을 써라"라는 한 문장을 더하자 그 호출이 0.7번으로 줄었고 위 표가 나왔다.
+다시 돌렸고, 더 큰 Haiku 세트에서 비용이 오히려 10.3% **늘었다**(컨텍스트 +12.8%). "이 목록에서 호출 지점을 바로 고치고, 같은 이름으로
+`rg`를 다시 돌리지 마라. 목록이 불완전해 보일 때만 --all을 써라"라는 한 문장을 더하자 실행당 `rg` 호출이 2.4번에서 0.02번으로
+(Kotlin, Codex, 과제 23개), 2.8번에서 0.5번으로(TypeScript, Haiku) 줄었고 위 표가 나왔다.
 이 수정한 프롬프트는 첫 결과를 본 뒤에 썼으므로 절감 효과는 탐색적인 결과로 읽어야 하고, 도구와 지시문을 함께 배포해야 한다.
 
 **어렵게 배운 것.** 첫 TypeScript 에이전트 실행은 기준보다 10개 과제를 더 실패했다(33/44 대 43/44). 컴파일러가 지목한 파일은
@@ -155,6 +171,6 @@ moru-narrow <이름> [--repo DIR] [--decl FILE] [--all] [--json] [--lang kotlin|
 
 ## 상태
 
-알파. PyPI와 npm에는 없다. 단위 테스트는 아직 없다(위에 적은 컴파일러 정답으로 검증했다). 이슈와 다른 저장소에서의 결과를 환영한다.
+알파. PyPI와 npm에는 없다. 단위 테스트는 아직 없다. 순위 매기기는 위에 적은 컴파일러 정답으로 검증했고, `--install`은 임시 홈 디렉터리에서 손으로만 확인했다(새 설치, 재실행, `--project`, `--agents-md` 반복 실행). 이슈와 다른 저장소에서의 결과를 환영한다.
 
 라이선스: [MIT](LICENSE).

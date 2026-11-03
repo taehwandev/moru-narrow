@@ -16,8 +16,8 @@ files and **line ranges** to check first. No index, no database, no model calls,
 
 - **What it does:** after `rg -w name`, it lists the few files and line ranges you must edit, ranked, and hides the rest behind `--all`. Nothing is dropped.
 - **Does it miss files?** Checked against the compiler: in all 217 Kotlin tasks every truth file was listed (rules were partly tuned on them), and 191 of 194 tasks (99.3% of files) on a fresh TypeScript set. The rare misses are files that never mention the name.
-- **Does it help a coding agent?** In 6 test setups the compile success rate never dropped below the baseline. Context tokens fell 10% to 35% in five setups; in the sixth (Codex on TypeScript) the change cannot be told apart from noise.
-- **The catch:** the savings appeared only when the agent was also told not to re-run `rg`. Without that sentence, cost went up 10% in one test.
+- **Does it help a coding agent?** In 6 test setups the compile success rate never dropped below the baseline. Context tokens fell by 9.8% to 34.5% in five setups; in the sixth (Codex on TypeScript) the change cannot be told apart from noise.
+- **The catch:** the savings appeared only when the agent was also told not to re-run `rg`. Without that sentence, cost went up 10.3% [+0.0003, +0.0009 USD per task] in one test (Kotlin, Haiku, 57 tasks).
 
 ```text
 $ moru-narrow getGlobalTheme --repo ./my-next-app
@@ -32,15 +32,32 @@ hidden: tier 2 has 0 files (use --all to list them)
 
 ## Quick start
 
-Needs Python 3.9+ and [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on your `PATH`. No other dependency.
+Needs Python 3.9+ and [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on your `PATH`. No other dependency. It does not need Moru Core or any other tool.
 
 ```bash
-git clone https://github.com/taehwandev/moru-narrow
-cd moru-narrow
-python3 -m moru_narrow <Name> --repo /path/to/your/project   # Kotlin+Gradle or TypeScript, auto-detected
+pipx install git+https://github.com/taehwandev/moru-narrow     # or: uv tool install git+https://... / pip install git+https://...
+moru-narrow <Name> --repo /path/to/your/project                # Kotlin+Gradle or TypeScript, auto-detected
 ```
 
-Not published on PyPI or npm. `pyproject.toml` declares the `moru-narrow` and `mnarrow` console scripts, but installing it with pip is untested.
+Without installing, from a clone: `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <Name> --repo ...`.
+
+Not published on PyPI or npm yet. The `pip install git+...` route was tested in a clean virtualenv on macOS with Python 3.9.6; other platforms and Python versions are untested.
+
+## Use with your coding agent
+
+The tool only helps an agent when the agent is told how to use it (see the savings section: without the "do not re-run rg" sentence cost went up). One command registers that instruction:
+
+```bash
+moru-narrow --install                # agent skill in ~/.claude/skills/ (Claude Code) and ~/.agents/skills/ (Codex and other agent-skills tools)
+moru-narrow --install --project      # same, but into ./.claude and ./.agents so your team shares it via git
+moru-narrow --install --agents-md    # no skill support (e.g. Cursor): add a marked block to ./AGENTS.md
+```
+
+Re-running is safe: an existing `SKILL.md` is kept (`--force` overwrites it), and the `AGENTS.md` block is replaced in place without touching your other text. `--target claude|agents` limits the skill install to one location. The installed text is based on the instruction used in the agent tests (worded differently, and extended as noted below):
+
+> When a task changes a function or constructor signature (adds or changes a parameter), run `moru-narrow <Name> --repo <project root>` once and edit the call sites it lists under TIER 1. Do not run `rg` again for the same name. Use `--all` only if the list looks incomplete. For anything else (renames, logic bugs, config strings), or if moru-narrow reports an error or an unsupported language, use plain `rg`.
+
+The exact wording was not the one measured, and the last sentence (use plain `rg` for other tasks and unsupported languages) is new: the tests only contained signature-change tasks and a prompt written for them. Any agent that can run a shell command can also call `moru-narrow` directly.
 
 ## Why
 
@@ -49,7 +66,7 @@ strings, same-named functions in other modules and unrelated files. On a Kotlin 
 change that broke 3 to 4**. An agent then reads all of them.
 
 A code-graph index was the obvious fix. We measured a syntax-level code-graph index on the same Kotlin repo and it did not
-pay off at the agent level: no measurable cost reduction with location-only output, and +45.5% cost when it returned source code.
+pay off at the agent level: no measurable cost difference with location-only output, and about +45.5% cost when it returned source code (that run also carried MCP connection overhead, so part of the increase is not the graph itself).
 It also needs an index build and a sync after every edit (stale until synced). `moru-narrow` has no build step and no
 staleness, because it runs `rg` live.
 
@@ -126,9 +143,10 @@ only. Cost is the API-equivalent estimate reported by the CLI.
 | TypeScript, Codex terra, 28 x 2 | 56/56 -> 56/56 | -6.5% [-13.5%, 0.0%] (touches 0) | n/a |
 
 **The agent instruction matters as much as the tool.** In the first Kotlin experiment the agent got the same list but
-kept re-running `rg` afterwards (3.6 to 4.5 extra `rg` calls per run), and cost went **up** 10.3% on the larger set. Adding one
+kept re-running `rg` afterwards, and cost went **up** 10.3% (context +12.8%) on the larger Haiku set. Adding one
 sentence, "edit the call sites from this list without re-running rg for the same name; use --all only if the list looks
-incomplete", cut those calls to 0.7 and produced the table above. That revised prompt was written after seeing the first
+incomplete", changed that: with it, `rg` calls per run fell from 2.4 to 0.02 (Kotlin, Codex, 23 tasks) and from 2.8 to 0.5
+(TypeScript, Haiku), and it produced the table above. That revised prompt was written after seeing the first
 results, so treat the savings as exploratory, and ship the instruction together with the tool.
 
 **What we learned the hard way.** The first TypeScript agent run failed 10 more tasks than the baseline (33/44 vs 43/44).
@@ -153,6 +171,6 @@ The evaluation harnesses (agent runners, compiler-truth generators, scorers) are
 
 ## Status
 
-Alpha. Not on PyPI or npm. No unit tests yet (it was validated against compiler ground truth, see above). Issues and results from other repositories are welcome.
+Alpha. Not on PyPI or npm. No unit tests yet. The ranking was validated against compiler ground truth (see above); `--install` was only checked by hand in a temporary home directory (fresh install, re-run, `--project`, `--agents-md` idempotence). Issues and results from other repositories are welcome.
 
 License: [MIT](LICENSE).
