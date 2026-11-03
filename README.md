@@ -37,6 +37,7 @@ Needs Python 3.9+ and [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on
 ```bash
 pipx install moru-narrow     # or: uv tool install moru-narrow / pip install moru-narrow
 moru-narrow <Name> --repo /path/to/your/project                # Kotlin+Gradle or TypeScript, auto-detected
+moru-narrow --install        # optional: tell your coding agent to use it (see "Use with your coding agent")
 ```
 
 Without installing, from a clone: `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <Name> --repo ...`.
@@ -45,7 +46,7 @@ Published on [PyPI](https://pypi.org/project/moru-narrow/); not on npm. `pip ins
 
 ## Use with your coding agent
 
-The tool only helps an agent when the agent is told how to use it (see the savings section: without the "do not re-run rg" sentence cost went up). One command registers that instruction:
+The tool only helps an agent when the agent is told how to use it. In our tests, giving the agent the tool alone raised cost by 10.3%; the savings appeared only with the instruction "do not re-run `rg` for the same name" (details in the savings section). One command registers that instruction:
 
 ```bash
 moru-narrow --install                # agent skill in ~/.claude/skills/ (Claude Code) and ~/.agents/skills/ (Codex and other agent-skills tools)
@@ -57,7 +58,11 @@ Re-running is safe: an existing `SKILL.md` is kept (`--force` overwrites it), an
 
 > When a task changes a function or constructor signature (adds or changes a parameter), run `moru-narrow <Name> --repo <project root>` once and edit the call sites it lists under TIER 1. Do not run `rg` again for the same name. Use `--all` only if the list looks incomplete. For anything else (renames, logic bugs, config strings), or if moru-narrow reports an error or an unsupported language, use plain `rg`.
 
-The exact wording was not the one measured, and the last sentence (use plain `rg` for other tasks and unsupported languages) is new: the tests only contained signature-change tasks and a prompt written for them. Any agent that can run a shell command can also call `moru-narrow` directly.
+The exact wording was not the one measured, and the last sentence (use plain `rg` for other tasks and unsupported languages) is new: the tests only contained signature-change tasks and a prompt written for them.
+
+**Other tools.** `--install` only writes agent-skills files and `AGENTS.md`. If your tool has its own instruction file (Cursor rules, Copilot instructions, and similar), copy the quoted text above into it. Any agent that can run a shell command can call `moru-narrow` directly.
+
+**Check that it works.** Start a new session (a skill is picked up at session start), ask for a signature change such as "add a required `traceId` parameter to `<function>`", and look at the commands the agent runs: it should call `moru-narrow <function>` once and not follow with `rg` for the same name. If it does not call the tool, the instruction was not loaded.
 
 ## Why
 

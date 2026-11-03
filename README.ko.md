@@ -39,6 +39,7 @@ Python 3.9 이상과 [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)이 `
 ```bash
 pipx install moru-narrow     # 또는: uv tool install moru-narrow / pip install moru-narrow
 moru-narrow <이름> --repo /path/to/your/project                # Kotlin+Gradle 또는 TypeScript, 자동 감지
+moru-narrow --install        # 선택: 코딩 에이전트가 이 도구를 쓰도록 등록한다("코딩 에이전트에 적용하기" 참고)
 ```
 
 설치하지 않고 쓰려면 저장소를 내려받아 `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <이름> --repo ...`로 실행한다.
@@ -47,7 +48,7 @@ moru-narrow <이름> --repo /path/to/your/project                # Kotlin+Gradle
 
 ## 코딩 에이전트에 적용하기
 
-에이전트가 사용법을 알아야 도구가 도움이 된다(절감 효과 항목 참고: "`rg`를 다시 돌리지 마라"는 문장이 없으면 비용이 늘었다). 명령 하나로 그 지시를 등록한다.
+에이전트가 사용법을 알아야 도구가 도움이 된다. 시험에서 도구만 쥐여 주면 비용이 오히려 10.3% 늘었고, "같은 이름으로 `rg`를 다시 돌리지 마라"는 지시가 있을 때만 절감이 나왔다(자세한 내용은 절감 효과 항목). 명령 하나로 그 지시를 등록한다.
 
 ```bash
 moru-narrow --install                # 에이전트 스킬을 ~/.claude/skills/(Claude Code)와 ~/.agents/skills/(Codex 등 agent-skills 도구)에 설치
@@ -57,7 +58,11 @@ moru-narrow --install --agents-md    # 스킬을 지원하지 않는 도구(예:
 
 다시 실행해도 안전하다. 이미 있는 `SKILL.md`는 그대로 두고(`--force`로 덮어쓴다), `AGENTS.md`의 표시 구간만 제자리에서 바꾸며 다른 내용은 건드리지 않는다. `--target claude|agents`로 스킬 설치 위치를 하나로 줄일 수 있다. 설치되는 문장은 영문 README의 인용문과 같고, 에이전트 시험에 쓴 지시를 바탕으로 했다(표현은 다르다).
 
-측정한 문장과 표현이 같지 않고, 마지막 문장(다른 작업이나 지원하지 않는 언어에서는 평범한 `rg`를 쓴다)은 새로 넣은 것이다. 시험 과제는 시그니처 변경뿐이었고 그에 맞춘 프롬프트만 썼다. 셸 명령을 실행할 수 있는 에이전트라면 `moru-narrow`를 직접 호출해도 된다.
+측정한 문장과 표현이 같지 않고, 마지막 문장(다른 작업이나 지원하지 않는 언어에서는 평범한 `rg`를 쓴다)은 새로 넣은 것이다. 시험 과제는 시그니처 변경뿐이었고 그에 맞춘 프롬프트만 썼다.
+
+**다른 도구.** `--install`은 agent-skills 파일과 `AGENTS.md`만 쓴다. 쓰는 도구에 자체 지침 파일(Cursor 규칙, Copilot 지침 등)이 있으면 위 인용문을 거기에 복사해 넣는다. 셸 명령을 실행할 수 있는 에이전트라면 `moru-narrow`를 직접 호출해도 된다.
+
+**적용 확인.** 새 세션을 시작하고(스킬은 세션 시작 때 읽힌다) "`<함수>`에 필수 매개변수 `traceId`를 추가해 줘"처럼 시그니처 변경을 시킨 다음, 에이전트가 실행하는 명령을 본다. `moru-narrow <함수>`를 한 번 부르고 같은 이름으로 `rg`를 이어서 돌리지 않아야 한다. 도구를 부르지 않으면 지침이 로드되지 않은 것이다.
 
 ## 왜 만들었나
 
