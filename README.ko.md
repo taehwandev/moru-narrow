@@ -37,13 +37,13 @@ hidden: tier 2 has 0 files (use --all to list them)
 Python 3.9 이상과 [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)이 `PATH`에 있어야 한다. 다른 의존성은 없다. 모루 Core나 다른 도구는 필요 없다.
 
 ```bash
-pipx install git+https://github.com/taehwandev/moru-narrow     # 또는: uv tool install git+https://... / pip install git+https://...
+pipx install moru-narrow     # 또는: uv tool install moru-narrow / pip install moru-narrow
 moru-narrow <이름> --repo /path/to/your/project                # Kotlin+Gradle 또는 TypeScript, 자동 감지
 ```
 
 설치하지 않고 쓰려면 저장소를 내려받아 `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <이름> --repo ...`로 실행한다.
 
-아직 PyPI나 npm에는 올리지 않았다. `pip install git+...` 경로는 macOS의 깨끗한 가상환경(Python 3.9.6)에서 시험했고, 다른 플랫폼과 Python 버전은 시험하지 않았다.
+[PyPI](https://pypi.org/project/moru-narrow/)에 올라가 있고 npm에는 없다. `pip install moru-narrow`는 macOS의 깨끗한 가상환경에서 시험했다(버전 26.45.0, Python 3.9.6과 3.13 빌드). 다른 플랫폼은 시험하지 않았다. 최신 커밋을 따라가려면 Git에서 설치한다: `pipx install git+https://github.com/taehwandev/moru-narrow`.
 
 ## 코딩 에이전트에 적용하기
 
@@ -175,6 +175,6 @@ moru-narrow <이름> [--repo DIR] [--decl FILE] [--all] [--json] [--lang kotlin|
 
 ## 상태
 
-알파. PyPI와 npm에는 없다. 단위 테스트는 아직 없다. 순위 매기기는 위에 적은 컴파일러 정답으로 검증했고, `--install`은 임시 홈 디렉터리에서 손으로만 확인했다(새 설치, 재실행, `--project`, `--agents-md` 반복 실행). 이슈와 다른 저장소에서의 결과를 환영한다.
+알파. PyPI에는 있고 npm에는 없다. 단위 테스트는 아직 없다. 순위 매기기는 위에 적은 컴파일러 정답으로 검증했고, `--install`은 임시 홈 디렉터리에서 손으로만 확인했다(새 설치, 재실행, `--project`, `--agents-md` 반복 실행). 이슈와 다른 저장소에서의 결과를 환영한다.
 
 라이선스: [MIT](LICENSE).

@@ -35,13 +35,13 @@ hidden: tier 2 has 0 files (use --all to list them)
 Needs Python 3.9+ and [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on your `PATH`. No other dependency. It does not need Moru Core or any other tool.
 
 ```bash
-pipx install git+https://github.com/taehwandev/moru-narrow     # or: uv tool install git+https://... / pip install git+https://...
+pipx install moru-narrow     # or: uv tool install moru-narrow / pip install moru-narrow
 moru-narrow <Name> --repo /path/to/your/project                # Kotlin+Gradle or TypeScript, auto-detected
 ```
 
 Without installing, from a clone: `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <Name> --repo ...`.
 
-Not published on PyPI or npm yet. The `pip install git+...` route was tested in a clean virtualenv on macOS with Python 3.9.6; other platforms and Python versions are untested.
+Published on [PyPI](https://pypi.org/project/moru-narrow/); not on npm. `pip install moru-narrow` was tested in a clean virtualenv on macOS (version 26.45.0, Python 3.9.6 and 3.13 builds); other platforms are untested. To follow the latest commit instead, install from Git: `pipx install git+https://github.com/taehwandev/moru-narrow`.
 
 ## Use with your coding agent
 
@@ -175,6 +175,6 @@ Weekly CalVer `YY.WW.N` (scheme `calver-weekly`), for example `26.45.0`: two-dig
 
 ## Status
 
-Alpha. Not on PyPI or npm. No unit tests yet. The ranking was validated against compiler ground truth (see above); `--install` was only checked by hand in a temporary home directory (fresh install, re-run, `--project`, `--agents-md` idempotence). Issues and results from other repositories are welcome.
+Alpha. On PyPI, not on npm. No unit tests yet. The ranking was validated against compiler ground truth (see above); `--install` was only checked by hand in a temporary home directory (fresh install, re-run, `--project`, `--agents-md` idempotence). Issues and results from other repositories are welcome.
 
 License: [MIT](LICENSE).
