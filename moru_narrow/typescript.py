@@ -127,8 +127,18 @@ def recommend(repo, name, decl_files=None):
             near = any(repo.imports(g) & prov for g in repo.imports(rel))
         tier = 1 if (strong and near) else 2 if strong else 3
         tiers[tier][rel] = [{"line": ln, "to": call_range(lines, ln)[1], "role": r, "text": tx.strip()[:160]} for ln, tx, r in (strong or rows)]
-    return {"name": name, "declarations": decls, "tiers": tiers, "rg_files": len(byfile),
-            "rg_lines": sum(len(v) for v in byfile.values())}
+    res = {"name": name, "declarations": decls, "tiers": tiers, "rg_files": len(byfile),
+           "rg_lines": sum(len(v) for v in byfile.values())}
+    if len(dfiles) > 1:
+        res["groups"] = {d: [rel for rel in sorted(tiers[1]) if rel == d or repo.imports(rel) & repo.providers(d, _all_files(repo))] for d in sorted(dfiles)}
+    res["flow"] = _flow(repo, tiers[1])
+    return res
+
+
+def _flow(repo, t1):
+    """Files that never name the symbol but import a tier-1 file from the same folder (a type can flow through them)."""
+    dirs = {os.path.dirname(f) for f in t1}
+    return sorted(f for f in _all_files(repo) if f not in t1 and os.path.dirname(f) in dirs and repo.imports(f) & set(t1))
 
 
 _ALL = {}
@@ -141,7 +151,26 @@ def _all_files(repo):
     return _ALL[repo.root]
 
 
-def render(res, show_all):
+def _tier1_lines(res, t1):
+    """TIER 1 files with their lines; grouped by declaration when several declaring files exist."""
+    def one(rel):
+        out = [rel]
+        for r in t1[rel]: out.append(f"  {r['line']}" + (f"-{r['to']}" if r["to"] > r["line"] else "") + f": {r['text']}")
+        return out
+    groups = res.get("groups")
+    if not groups: return [x for rel in sorted(t1) for x in one(rel)]
+    out, seen = [], set()
+    for d, rels in groups.items():
+        out.append(f"-- sees the declaration in {d}:")
+        for rel in rels: out += one(rel); seen.add(rel)
+    rest = [rel for rel in sorted(t1) if rel not in seen]
+    if rest:
+        out.append("-- cannot tell which declaration:")
+        for rel in rest: out += one(rel)
+    return out
+
+
+def render(res, show_all, show_flow=False):
     o = [f"{res['name']}  declared: " + ("; ".join(f"{f}:{ln}" for f, ln in res["declarations"]) or "not found in non-test .ts/.tsx")]
     if len(res["declarations"]) > 1:
         o.append(f"WARNING: {len(res['declarations'])} declarations of {res['name']}; TIER 1 merges the callers of all of them. Pass --decl <FILE> for the one you change.")
@@ -149,9 +178,10 @@ def render(res, show_all):
         o.append(f"NOTE: {res['name']} looks like a React component. A new prop is a JSX attribute, not a positional argument: change the props type in the declaring file, then every JSX use. This tool did worse than plain rg on components in our tests.")
     t1, t2, t3 = (res["tiers"][k] for k in (1, 2, 3))
     o.append(f"TIER 1: check these ({len(t1)} files). rg found {res['rg_files']} files, {res['rg_lines']} lines.")
-    for rel, ls in sorted(t1.items()):
-        o.append(rel)
-        for r in ls: o.append(f"  {r['line']}" + (f"-{r['to']}" if r["to"] > r["line"] else "") + f": {r['text']}")
+    o.extend(_tier1_lines(res, t1))
+    flow = res.get("flow") or []
+    if flow and show_flow: o.append(f"FLOW: {len(flow)} files import a TIER 1 file from the same folder without naming {res['name']} (a type may flow through them):"); o.extend(flow)
+    elif flow: o.append(f"flow: {len(flow)} more files import a TIER 1 file without naming {res['name']} (use --flow to list them)")
     for k, t, label in ((2, t2, "TIER 2: strong match in a file that does not import the declaring file"), (3, t3, "TIER 3: weak match (comment, string, key)")):
         if show_all:
             o.append(f"{label} ({len(t)} files)")
@@ -166,10 +196,10 @@ def render(res, show_all):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("name"); ap.add_argument("--repo", default="."); ap.add_argument("--decl", action="append")
-    ap.add_argument("--all", action="store_true"); ap.add_argument("--json", action="store_true")
+    ap.add_argument("--all", action="store_true"); ap.add_argument("--flow", action="store_true"); ap.add_argument("--json", action="store_true")
     a = ap.parse_args(); repo = Repo(a.repo)
     res = recommend(repo, a.name, set(a.decl) if a.decl else None)
-    print(json.dumps(res, ensure_ascii=False) if a.json else render(res, a.all))
+    print(json.dumps(res, ensure_ascii=False) if a.json else render(res, a.all, a.flow))
 
 
 if __name__ == "__main__": main()

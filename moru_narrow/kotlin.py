@@ -9,6 +9,8 @@ Filters only DEMOTE files into tiers; `--all` always lists everything rg found.
 import argparse, json, os, re, subprocess, sys
 from pathlib import Path
 
+from moru_narrow.gradleplugins import convention_deps
+
 STRONG = ("use", "override", "import")
 TEST = re.compile(r"/(src/)?\w*[Tt]est\w*/")
 PKG = re.compile(r"^package\s+([\w.]+)", re.M)
@@ -21,7 +23,7 @@ class Repo:
     def __init__(self, root):
         self.root = Path(root).resolve(); self.src = {}
         self.build = {}                      # module dir -> set(dependency dirs)
-        self.accessors = {}
+        self.accessors = {}; self.builds = {}
         for g in list(self.root.rglob("build.gradle.kts")) + list(self.root.rglob("build.gradle")):
             if "/build/" in str(g): continue
             d = g.parent; base = self._settings_root(d)
@@ -30,14 +32,18 @@ class Repo:
                     for p in re.findall(r'project\((?:path\s*=\s*)?["\'](:[\w:.-]+)["\']', txt)}
             self.build[d.relative_to(self.root).as_posix()] = deps
             self.accessors[g] = (base, re.findall(r'\bprojects\.([A-Za-z][\w.]*)', txt))
+            self.builds[g] = d.relative_to(self.root).as_posix()
         for g, (base, accs) in self.accessors.items():
             self.build[g.parent.relative_to(self.root).as_posix()] |= {
                 m for m in (self._accessor_module(base, a) for a in accs) if m}
-        # Convention plugins (buildSrc / build-logic) add project deps to every module that applies them;
-        # which module applies which plugin is not resolved, so treat those deps as available everywhere.
-        ambient = self._ambient_deps()
-        for m in self.build:
-            if m not in ambient and not m.startswith(("build-logic", "buildSrc")): self.build[m] |= ambient - {m}
+        # Convention plugins (buildSrc / build-logic): deps they add to the modules that apply them. If their
+        # registrations cannot be resolved, the deps they mention are treated as available to every module.
+        per, resolved = convention_deps(self.root, {m: g.read_text(errors="ignore") for g, m in self.builds.items()})
+        ambient = set() if resolved else self._ambient_deps()
+        for g, mod in self.builds.items():
+            base = self._settings_root(g.parent)
+            extra = {(base / p.strip(":").replace(":", "/")).relative_to(self.root).as_posix() for p in per.get(mod, ())}
+            self.build[mod] |= (extra | ambient) - {mod}
         self.reach = {m: self._closure(m) for m in self.build}
 
     def _ambient_deps(self):
@@ -145,8 +151,43 @@ def recommend(repo, name, decl_files=None):
         near = pk in dpkgs or any(re.search(r"^import\s+" + re.escape(p) + r"[.\w]*", src, re.M) for p in dpkgs if p)
         tier = 1 if (strong and in_mod and near) else 2 if (strong and in_mod) else 3
         tiers[tier][rel] = [{"line": ln, "to": call_range(lines, ln)[1], "role": r, "text": tx.strip()[:160]} for ln, tx, r in (strong or rows)]
-    return {"name": name, "declarations": decls, "tiers": tiers, "rg_files": len(byfile),
-            "rg_lines": sum(len(v) for v in byfile.values())}
+    res = {"name": name, "declarations": decls, "tiers": tiers, "rg_files": len(byfile),
+           "rg_lines": sum(len(v) for v in byfile.values())}
+    if len(dfiles) > 1: res["groups"] = _groups(repo, dfiles, tiers[1])
+    return res
+
+
+def _groups(repo, dfiles, t1):
+    """tier-1 files that can see each declaring file (module reachable and same package or import)."""
+    out = {}
+    for d in sorted(dfiles):
+        dm, dp = repo.module(d), repo.package(d)
+        hit = []
+        for rel in sorted(t1):
+            m = repo.module(rel); src = repo.text(rel)
+            sees = (m == dm or dm in repo.reach.get(m, ())) and (repo.package(rel) == dp or bool(dp and re.search(r"^import\s+" + re.escape(dp) + r"[.\w]*", src, re.M)))
+            if rel == d or sees: hit.append(rel)
+        out[d] = hit
+    return out
+
+
+def _tier1_lines(res, t1):
+    """TIER 1 files with their lines; grouped by declaration when several declaring files exist."""
+    def one(rel):
+        out = [rel]
+        for r in t1[rel]: out.append(f"  {r['line']}" + (f"-{r['to']}" if r["to"] > r["line"] else "") + f": {r['text']}")
+        return out
+    groups = res.get("groups")
+    if not groups: return [x for rel in sorted(t1) for x in one(rel)]
+    out, seen = [], set()
+    for d, rels in groups.items():
+        out.append(f"-- sees the declaration in {d}:")
+        for rel in rels: out += one(rel); seen.add(rel)
+    rest = [rel for rel in sorted(t1) if rel not in seen]
+    if rest:
+        out.append("-- cannot tell which declaration:")
+        for rel in rest: out += one(rel)
+    return out
 
 
 def render(res, show_all):
@@ -155,9 +196,7 @@ def render(res, show_all):
         o.append(f"WARNING: {len(res['declarations'])} declarations of {res['name']}; TIER 1 merges the callers of all of them. Pass --decl <FILE> for the one you change.")
     t1, t2, t3 = (res["tiers"][k] for k in (1, 2, 3))
     o.append(f"TIER 1: check these ({len(t1)} files). rg found {res['rg_files']} files, {res['rg_lines']} lines.")
-    for rel, ls in sorted(t1.items()):
-        o.append(rel)
-        for r in ls: o.append(f"  {r['line']}" + (f"-{r['to']}" if r["to"] > r["line"] else "") + f": {r['text']}")
+    o.extend(_tier1_lines(res, t1))
     for k, t, label in ((2, t2, "TIER 2: strong match, outside the declaring package or its imports"), (3, t3, "TIER 3: weak match or unreachable module")):
         if show_all:
             o.append(f"{label} ({len(t)} files)")

@@ -1,6 +1,6 @@
 [project]
 name = "moru-narrow"
-version = "26.45.1"
+version = "26.45.2"
 description = "Narrow `rg -w <Name>` to the files and lines you must edit after a signature change (Kotlin+Gradle, TypeScript)."
 readme = "README.md"
 requires-python = ">=3.9"

@@ -80,15 +80,27 @@ staleness, because it runs `rg` live.
 1. `rg -nw <Name>` collects hits (test files are excluded).
 2. Each line gets a role: `use`, `import`, `override`, `declaration`, `comment`, `string`, `named-arg`, ...
 3. A file is **tier 1** when it has a strong role (`use`/`import`/`override`) **and** can see the declaration:
-   - Kotlin: the module is reachable through Gradle `project()` edges, and the file is in the same package or imports it.
-   - TypeScript: the file imports the declaring file (relative paths and `tsconfig` aliases, through re-exporting
-     barrel files), or imports a wrapper that does and calls `X.name`, or is the declaring file itself.
+   - Kotlin: the module is reachable through Gradle dependencies (`project(":x")`, `project(path = ":x")`, type-safe
+     `projects.x.y` accessors, and dependencies added by convention plugins in `build-logic`/`buildSrc`), and the file is
+     in the same package or imports it.
+   - TypeScript: the file imports the declaring file (relative paths, `tsconfig` aliases including `extends`, workspace
+     packages through their `exports`, re-exporting barrel files, `.js`/`.jsx` specifiers), or imports a wrapper that
+     does and calls `X.name`, or is the declaring file itself.
 4. Everything else is demoted to tier 2/3. **Filters only demote. `--all` always lists everything `rg` found.**
 5. Multi-line calls are returned as ranges (`19-22`), because compilers report errors at argument lines.
 
 ```text
-moru-narrow <Name> [--repo DIR] [--decl FILE] [--all] [--json] [--lang kotlin|ts]
+moru-narrow <Name> [--repo DIR] [--decl FILE] [--all] [--flow] [--json] [--lang kotlin|ts]
 ```
+
+Two more behaviours worth knowing:
+
+- If the name has declarations in more than one file, tier 1 is grouped by the declaration each file can see, with a
+  warning to pass `--decl <FILE>` for the one you change.
+- TypeScript only: a type can flow through a file that never names the symbol. The output ends with a one-line
+  hint (`flow: N more files ...`) and `--flow` lists those files: they import a tier-1 file from the same folder. On
+  our fresh TypeScript set this found 3 of the 9 files tier 1 missed, at 1.6 extra files per task, which is why it is
+  not in the default list.
 
 Language is auto-detected (`tsconfig.json`, or a Gradle build).
 
@@ -172,8 +184,9 @@ stays in the record. Lesson: validate with the real agent loop, not only offline
 - Languages: Kotlin + Gradle and TypeScript. Each language needs a small profile (role patterns, how to see a
   declaration). Dynamic languages need a different ground truth.
 - Verified on **one change shape** (adding a required first parameter) and **one repository per language**.
-- **React components are not supported well.** A new prop is a JSX attribute, not a positional argument. Measured with the first version: 6 of 10 component tasks failed with the tool against 1 of 10 with plain `rg` (Haiku); Codex failed 1 of 10 in both. The tool now prints a note for capitalised names declared in `.tsx` files, and the installed instruction tells the agent to check the props type and compare with `rg`. The new wording has not been tested with an agent.
+- **React components: no measured gain.** With the first version, a *positional first parameter* on a component made Haiku fail 6 of 10 tasks against 1 of 10 for plain `rg`. That shape does not exist in JSX. With the right shape (a required prop) on 24 fresh tasks, both Haiku and Codex passed as often with the tool as without (Haiku 48/48 in all three conditions; Codex 45/48 baseline, 47/48 with the sentence only, 48/48 with the tool), but there was no saving: `rg` already returned about 2.7 files, and Haiku's cost was 7.2% higher with the tool [+0.0001, +0.0006 USD per task]. The tool prints a note for capitalised names in `.tsx` files.
 - Declaration-based detection was extended after these experiments (type-safe `projects.*` accessors, convention plugins, tsconfig `extends`, pnpm workspaces). It was checked offline on two public repositories, not with an agent, and the Kotlin check counts import lines as truth, which overlaps with the tool's own signal.
+- **Small result sets gain little.** Kotlin set 1, Haiku: with 10 or fewer `rg` files the tool changed context by +6.1% (4 tasks); with 11 to 40 files -37.0% (7 tasks), with 41 or more -39.9% (12 tasks). TypeScript function tasks (4+ files) saved 22% (Haiku) and 6 to 8% (Codex). Agent runs are short: about 4 model turns, parallel reads and edits, so there is little left to remove when `rg` is already precise.
 - Savings depend on the model. Codex on the TypeScript repo showed no clear reduction (-6.5%, interval touches 0). There
   `rg` was already precise (3.5 files on average for functions) and the agent ran only ~3 commands per task; we did not test why.
 - Sample sizes are small (28 to 57 tasks, 2 repetitions per task). In the baseline every run passed in TypeScript, so pass rate cannot show an improvement there, only that nothing broke.
