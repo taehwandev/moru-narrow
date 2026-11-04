@@ -9,9 +9,11 @@ Tier 1 = a strong use/import AND the file imports the declaring file (directly o
 import argparse, json, os, re, subprocess
 from pathlib import Path
 
+from moru_narrow.tsresolve import Resolver
+
 STRONG = ("use", "import")
 TEST = re.compile(r"(\.test\.|\.spec\.|/__tests__/|/__mocks__/)")
-EXTS = (".ts", ".tsx", ".mts")
+EXTS = (".ts", ".tsx", ".mts", ".js", ".jsx", ".mjs")
 FROM = re.compile(r"""(?:import|export)\s[^;'"]*?\bfrom\s*['"]([^'"]+)['"]""", re.S)
 BARE = re.compile(r"""\bimport\s*['"]([^'"]+)['"]""")
 DYN = re.compile(r"""(?:\bimport|\brequire)\s*\(\s*['"]([^'"]+)['"]\s*\)""")
@@ -21,24 +23,10 @@ REEXPORT = re.compile(r"""\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\}
 def is_test(rel): return bool(TEST.search("/" + rel))
 
 
-class Repo:
+class Repo(Resolver):
     def __init__(self, root):
         self.root = Path(root).resolve(); self.src = {}; self._imp = {}; self._rex = {}
         self.aliases = self._load_aliases()
-
-    def _load_aliases(self):
-        out = []
-        cfg = self.root / "tsconfig.json"
-        if cfg.exists():
-            raw = re.sub(r'("(?:\\.|[^"\\])*")|//[^\n]*|/\*.*?\*/', lambda m: m.group(1) or "", cfg.read_text(errors="ignore"), flags=re.S)
-            raw = re.sub(r",(\s*[}\]])", r"\1", raw)
-            try:
-                co = json.loads(raw).get("compilerOptions", {}); base = co.get("baseUrl", ".")
-                for k, v in (co.get("paths") or {}).items():
-                    if v: out.append((k.rstrip("*"), (Path(base) / v[0].rstrip("*")).as_posix().lstrip("./")))
-            except ValueError:
-                pass
-        return out
 
     def text(self, rel):
         if rel not in self.src: self.src[rel] = (self.root / rel).read_text(errors="ignore")
@@ -48,11 +36,13 @@ class Repo:
         cands = []
         if spec.startswith("."): cands.append(os.path.normpath(Path(frm).parent / spec))
         else:
-            for pre, tgt in self.aliases:
+            for pre, tgt in self._paths_for(Path(frm).parent.as_posix()):
                 if spec.startswith(pre): cands.append(os.path.normpath(Path(tgt) / spec[len(pre):]))
+            cands += self._workspace(spec)
         for c in cands:
             c = str(Path(c))
-            for suffix in ("", *EXTS, ".d.ts", "/index.ts", "/index.tsx"):
+            if re.search(r"\.(?:m|c)?jsx?$", c): cands.append(re.sub(r"\.(?:m|c)?jsx?$", "", c))
+            for suffix in ("", *EXTS, ".d.ts", "/index.ts", "/index.tsx", "/index.js"):
                 p = c + suffix
                 if p.endswith(EXTS) and (self.root / p).is_file(): return p
         return None
@@ -106,11 +96,11 @@ def call_range(lines, i):
 
 
 def rg_hits(repo, name):
-    out = subprocess.run(["rg", "-nw", "-g", "*.ts", "-g", "*.tsx", "-g", "*.mts", "-g", "!node_modules", "-g", "!.next", "--", name, "."],
+    out = subprocess.run(["rg", "-nw", "-g", "*.ts", "-g", "*.tsx", "-g", "*.mts", "-g", "*.js", "-g", "*.jsx", "-g", "*.mjs", "-g", "!node_modules", "-g", "!.next", "--", name, "."],
                          cwd=repo.root, capture_output=True, text=True).stdout.splitlines()
     byfile = {}
     for l in out:
-        m = re.match(r"\./(.+?\.(?:ts|tsx|mts)):(\d+):(.*)", l)
+        m = re.match(r"\./(.+?\.(?:ts|tsx|mts|js|jsx|mjs)):(\d+):(.*)", l)
         if m and not is_test(m.group(1)): byfile.setdefault(m.group(1), []).append((int(m.group(2)), m.group(3)))
     return byfile
 
@@ -146,13 +136,17 @@ _ALL = {}
 
 def _all_files(repo):
     if repo.root not in _ALL:
-        out = subprocess.run(["rg", "--files", "-g", "*.ts", "-g", "*.tsx", "-g", "*.mts", "-g", "!node_modules", "-g", "!.next"], cwd=repo.root, capture_output=True, text=True).stdout.split()
+        out = subprocess.run(["rg", "--files", "-g", "*.ts", "-g", "*.tsx", "-g", "*.mts", "-g", "*.js", "-g", "*.jsx", "-g", "*.mjs", "-g", "!node_modules", "-g", "!.next"], cwd=repo.root, capture_output=True, text=True).stdout.split()
         _ALL[repo.root] = [f for f in out if not is_test(f) and "export" in repo.text(f)]
     return _ALL[repo.root]
 
 
 def render(res, show_all):
     o = [f"{res['name']}  declared: " + ("; ".join(f"{f}:{ln}" for f, ln in res["declarations"]) or "not found in non-test .ts/.tsx")]
+    if len(res["declarations"]) > 1:
+        o.append(f"WARNING: {len(res['declarations'])} declarations of {res['name']}; TIER 1 merges the callers of all of them. Pass --decl <FILE> for the one you change.")
+    if res["name"][:1].isupper() and any(f.endswith(".tsx") for f, _ in res["declarations"]):
+        o.append(f"NOTE: {res['name']} looks like a React component. A new prop is a JSX attribute, not a positional argument: change the props type in the declaring file, then every JSX use. This tool did worse than plain rg on components in our tests.")
     t1, t2, t3 = (res["tiers"][k] for k in (1, 2, 3))
     o.append(f"TIER 1: check these ({len(t1)} files). rg found {res['rg_files']} files, {res['rg_lines']} lines.")
     for rel, ls in sorted(t1.items()):

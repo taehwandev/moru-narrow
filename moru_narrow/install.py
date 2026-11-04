@@ -8,6 +8,7 @@ from pathlib import Path
 RULE = ("When a task changes a function or constructor signature (adds or changes a parameter), run "
         "`moru-narrow <Name> --repo <project root>` once and edit the call sites it lists under TIER 1. "
         "Do not run `rg` again for the same name. Use `--all` only if the list looks incomplete. "
+        "If the output has a WARNING about several declarations, rerun with `--decl <file>` for the one you change. If it says the name looks like a React component, read the props type first and check the list against `rg` before trusting it. "
         "For anything else (renames, logic bugs, config strings), or if moru-narrow reports an error or an unsupported language, use plain `rg`.")
 
 SKILL = f"""---

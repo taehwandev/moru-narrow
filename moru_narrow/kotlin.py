@@ -21,13 +21,47 @@ class Repo:
     def __init__(self, root):
         self.root = Path(root).resolve(); self.src = {}
         self.build = {}                      # module dir -> set(dependency dirs)
+        self.accessors = {}
         for g in list(self.root.rglob("build.gradle.kts")) + list(self.root.rglob("build.gradle")):
             if "/build/" in str(g): continue
             d = g.parent; base = self._settings_root(d)
+            txt = g.read_text(errors="ignore")
             deps = {(base / p.strip(":").replace(":", "/")).relative_to(self.root).as_posix()
-                    for p in re.findall(r'project\(["\'](:[\w:.-]+)["\']\)', g.read_text(errors="ignore"))}
+                    for p in re.findall(r'project\((?:path\s*=\s*)?["\'](:[\w:.-]+)["\']', txt)}
             self.build[d.relative_to(self.root).as_posix()] = deps
+            self.accessors[g] = (base, re.findall(r'\bprojects\.([A-Za-z][\w.]*)', txt))
+        for g, (base, accs) in self.accessors.items():
+            self.build[g.parent.relative_to(self.root).as_posix()] |= {
+                m for m in (self._accessor_module(base, a) for a in accs) if m}
+        # Convention plugins (buildSrc / build-logic) add project deps to every module that applies them;
+        # which module applies which plugin is not resolved, so treat those deps as available everywhere.
+        ambient = self._ambient_deps()
+        for m in self.build:
+            if m not in ambient and not m.startswith(("build-logic", "buildSrc")): self.build[m] |= ambient - {m}
         self.reach = {m: self._closure(m) for m in self.build}
+
+    def _ambient_deps(self):
+        deps = set()
+        for sub in ("build-logic", "buildSrc"):
+            for f in list((self.root / sub).rglob("*.kt")) + list((self.root / sub).rglob("*.kts")):
+                if "/build/" in str(f): continue
+                for p in re.findall(r'project\(["\'](:[\w:.-]+)["\']\)', f.read_text(errors="ignore")):
+                    m = p.strip(":").replace(":", "/")
+                    if m in self.build: deps.add(m)
+        return deps
+
+    @staticmethod
+    def _norm(s): return re.sub(r'[-_.]', '', s).lower()
+
+    def _accessor_module(self, base, acc):
+        """projects.core.ui.api -> the longest prefix that names a module dir (type-safe accessors)."""
+        toks = acc.split(".")
+        for n in range(len(toks), 0, -1):
+            want = [self._norm(t) for t in toks[:n]]
+            for m in self.build:
+                p = Path(m).relative_to(base.relative_to(self.root)).parts if base != self.root else Path(m).parts
+                if [self._norm(x) for x in p] == want: return m
+        return None
 
     def _settings_root(self, d):
         cur = d
@@ -117,6 +151,8 @@ def recommend(repo, name, decl_files=None):
 
 def render(res, show_all):
     o = [f"{res['name']}  declared: " + ("; ".join(f"{f}:{ln}" for f, ln in res["declarations"]) or "not found in non-test .kt")]
+    if len(res["declarations"]) > 1:
+        o.append(f"WARNING: {len(res['declarations'])} declarations of {res['name']}; TIER 1 merges the callers of all of them. Pass --decl <FILE> for the one you change.")
     t1, t2, t3 = (res["tiers"][k] for k in (1, 2, 3))
     o.append(f"TIER 1: check these ({len(t1)} files). rg found {res['rg_files']} files, {res['rg_lines']} lines.")
     for rel, ls in sorted(t1.items()):

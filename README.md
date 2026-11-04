@@ -16,8 +16,8 @@ files and **line ranges** to check first. No index, no database, no model calls,
 
 - **What it does:** after `rg -w name`, it lists the few files and line ranges you must edit, ranked, and hides the rest behind `--all`. Nothing is dropped.
 - **Does it miss files?** Checked against the compiler: in all 217 Kotlin tasks every truth file was listed (rules were partly tuned on them), and 191 of 194 tasks (99.3% of files) on a fresh TypeScript set. The rare misses are files that never mention the name.
-- **Does it help a coding agent?** In 6 test setups the compile success rate never dropped below the baseline. Context tokens fell by 9.8% to 34.5% in five setups; in the sixth (Codex on TypeScript) the change cannot be told apart from noise.
-- **The catch:** the savings appeared only when the agent was also told not to re-run `rg`. Without that sentence, cost went up 10.3% [+0.0003, +0.0009 USD per task] in one test (Kotlin, Haiku, 57 tasks).
+- **Does it help a coding agent?** On function and constructor signature changes, context tokens fell by 9.8% to 34.5% in five of six setups; in the sixth (Codex on TypeScript) the change cannot be told apart from noise. Compile pass counts were equal or higher, but the one Kotlin difference (112 -> 114 of 114) is a single task. **React components are the exception:** with the first tool version Haiku failed 6 of 10 component tasks against 1 of 10 for plain `rg` (see the limits).
+- **The catch:** the savings appeared only when the agent was also told not to re-run `rg`. Without that sentence, cost went up 10.3% [+0.0003, +0.0009 USD per task] on one of two Kotlin sets (57 tasks, Haiku); on the other set (23 tasks) the same comparison was -0.9%, indistinguishable from zero. The sentence was added after seeing these results, and there is no run of the sentence alone without the tool.
 
 ```text
 $ moru-narrow getGlobalTheme --repo ./my-next-app
@@ -46,7 +46,7 @@ Published on [PyPI](https://pypi.org/project/moru-narrow/); not on npm. `pip ins
 
 ## Use with your coding agent
 
-The tool only helps an agent when the agent is told how to use it. In our tests, giving the agent the tool alone raised cost by 10.3%; the savings appeared only with the instruction "do not re-run `rg` for the same name" (details in the savings section). One command registers that instruction:
+The tool only helps an agent when the agent is told how to use it. In one of our two Kotlin sets, giving the agent the tool alone raised cost by 10.3% (the other set: -0.9%); the savings appeared only with the instruction "do not re-run `rg` for the same name" (details in the savings section). One command registers that instruction:
 
 ```bash
 moru-narrow --install                # agent skill in ~/.claude/skills/ (Claude Code) and ~/.agents/skills/ (Codex and other agent-skills tools)
@@ -56,7 +56,7 @@ moru-narrow --install --agents-md    # no skill support (e.g. Cursor): add a mar
 
 Re-running is safe: an existing `SKILL.md` is kept (`--force` overwrites it), and the `AGENTS.md` block is replaced in place without touching your other text. `--target claude|agents` limits the skill install to one location. The installed text is based on the instruction used in the agent tests (worded differently, and extended as noted below):
 
-> When a task changes a function or constructor signature (adds or changes a parameter), run `moru-narrow <Name> --repo <project root>` once and edit the call sites it lists under TIER 1. Do not run `rg` again for the same name. Use `--all` only if the list looks incomplete. For anything else (renames, logic bugs, config strings), or if moru-narrow reports an error or an unsupported language, use plain `rg`.
+> When a task changes a function or constructor signature (adds or changes a parameter), run `moru-narrow <Name> --repo <project root>` once and edit the call sites it lists under TIER 1. Do not run `rg` again for the same name. Use `--all` only if the list looks incomplete. If the output has a WARNING about several declarations, rerun with `--decl <file>` for the one you change. If it says the name looks like a React component, read the props type first and check the list against `rg` before trusting it. For anything else (renames, logic bugs, config strings), or if moru-narrow reports an error or an unsupported language, use plain `rg`.
 
 The exact wording was not the one measured, and the last sentence (use plain `rg` for other tasks and unsupported languages) is new: the tests only contained signature-change tasks and a prompt written for them.
 
@@ -154,17 +154,26 @@ incomplete", changed that: with it, `rg` calls per run fell from 2.4 to 0.02 (Ko
 (TypeScript, Haiku), and it produced the table above. That revised prompt was written after seeing the first
 results, so treat the savings as exploratory, and ship the instruction together with the tool.
 
-**What we learned the hard way.** The first TypeScript agent run failed 10 more tasks than the baseline (33/44 vs 43/44).
-Every file the compiler flagged was in the list; the miss was calls *inside the declaring file*, which the first
-version hid because a file does not import itself. The offline truth had also excluded the declaring file, so the offline
-check could not see it. Fix: v3 keeps those lines in tier 1. Lesson: validate with the real agent loop, not only offline.
+**What we learned the hard way.** The first TypeScript agent run (Haiku, 44 tasks: 34 functions and 10 React components) failed
+11 tasks with the tool against 1 with plain `rg`. Taking the failures apart from the stored logs:
+
+- **5 function tasks:** every file the compiler flagged was edited; the only error left was inside the declaring file. The first
+  version hid calls *inside the declaring file* because a file does not import itself, and the offline truth had excluded
+  that file too, so the offline check could not see it. Fix (v3): those lines stay in tier 1. The 28 fresh function tasks
+  then passed 56/56 in both conditions.
+- **6 component tasks:** 3 never changed the declaration, 3 left call sites. The list named the right files; the agent
+  stopped on the mismatch between a "first parameter" and JSX attributes. Plain `rg` failed 1 of the same 10.
+
+Components were then left out of the agent tests. That decision came after seeing the failures, so the 6/10 against 1/10
+stays in the record. Lesson: validate with the real agent loop, not only offline.
 
 ## Limits
 
 - Languages: Kotlin + Gradle and TypeScript. Each language needs a small profile (role patterns, how to see a
   declaration). Dynamic languages need a different ground truth.
 - Verified on **one change shape** (adding a required first parameter) and **one repository per language**.
-- React components are out of scope (a positional first parameter does not exist in JSX).
+- **React components are not supported well.** A new prop is a JSX attribute, not a positional argument. Measured with the first version: 6 of 10 component tasks failed with the tool against 1 of 10 with plain `rg` (Haiku); Codex failed 1 of 10 in both. The tool now prints a note for capitalised names declared in `.tsx` files, and the installed instruction tells the agent to check the props type and compare with `rg`. The new wording has not been tested with an agent.
+- Declaration-based detection was extended after these experiments (type-safe `projects.*` accessors, convention plugins, tsconfig `extends`, pnpm workspaces). It was checked offline on two public repositories, not with an agent, and the Kotlin check counts import lines as truth, which overlaps with the tool's own signal.
 - Savings depend on the model. Codex on the TypeScript repo showed no clear reduction (-6.5%, interval touches 0). There
   `rg` was already precise (3.5 files on average for functions) and the agent ran only ~3 commands per task; we did not test why.
 - Sample sizes are small (28 to 57 tasks, 2 repetitions per task). In the baseline every run passed in TypeScript, so pass rate cannot show an improvement there, only that nothing broke.
