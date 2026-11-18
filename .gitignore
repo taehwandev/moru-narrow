@@ -21,3 +21,6 @@ __pycache__/
 
 # local agent run state
 .moru/
+
+# Rust
+/target/

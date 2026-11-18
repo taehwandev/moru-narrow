@@ -7,12 +7,11 @@
 > **rg는 이름이 나온 모든 줄을 알려 준다. moru-narrow는 그중 고쳐야 할 줄을 알려 준다.** 히트를 하나도 버리지 않고, 순서와 먼저 보여 줄 것만 바꾼다.
 
 `moru-narrow`는 코딩 에이전트와 사람을 위해 `rg -w <이름>` 결과를 후처리한다. 모든 히트를 유지하면서 순위를 매기고,
-먼저 확인할 파일과 **줄 범위**를 출력한다. 인덱스도, 데이터베이스도, 모델 호출도, 상주 프로세스도 없다. Python 표준 라이브러리와
-[ripgrep](https://github.com/BurntSushi/ripgrep)만 쓴다.
+먼저 확인할 파일과 **줄 범위**를 출력한다. 네이티브 Rust 바이너리로 동작하며 인덱스도, 데이터베이스도, 모델 호출도, 상주 프로세스도, Python 런타임도 필요 없다. [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)만 있으면 된다.
 
-> 범위: **시그니처 변경**(매개변수를 추가하거나 바꾼 뒤 무엇이 깨지는지 찾기). 일반 `rg`를 대체하지 않는다. 변수 이름 변경, 로직 버그 추적, 설정 문자열 검색에는 `rg`를 그대로 쓴다.
+> 범위: **계약(시그니처) 변경 및 실제 호출부 영향도(blast radius) 파악**(매개변수·반환 타입 변경, 함수 분리·삭제, 동명이인/주석을 제외한 실제 호출처 탐색). 일반 `rg`를 대체하지 않는다. 변수 이름 변경, 로직 버그 추적, 설정 문자열 검색에는 `rg`를 그대로 쓴다.
 >
-> 상태: 알파 / 실험적. MIT 라이선스. 예시는 `moru-narrow` 명령(별칭 `mnarrow`)을 쓴다. 저장소를 내려받아 쓸 때는 `python3 -m moru_narrow`로 실행한다.
+> 상태: 알파 / 실험적. MIT 라이선스. `moru-narrow` 명령과 별칭 `mnarrow`를 함께 제공한다. (기존 Python 구현은 `python` 브랜치 / `python-archive` 태그에 보존되어 있다.)
 
 ## 한눈에 보기
 
@@ -34,17 +33,15 @@ hidden: tier 2 has 0 files (use --all to list them)
 
 ## 빠른 시작
 
-Python 3.9 이상과 [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)이 `PATH`에 있어야 한다. 다른 의존성은 없다. 모루 Core나 다른 도구는 필요 없다.
+`PATH`에 [ripgrep](https://github.com/BurntSushi/ripgrep)(`rg`)이 있어야 한다(소스에서 빌드할 때는 Rust `cargo` 필요). Python이나 모루 Core 등 별도 런타임은 필요 없다.
 
 ```bash
-pipx install moru-narrow     # 또는: uv tool install moru-narrow / pip install moru-narrow
-moru-narrow <이름> --repo /path/to/your/project                # Kotlin+Gradle 또는 TypeScript, 자동 감지
-moru-narrow --install        # 선택: 코딩 에이전트가 이 도구를 쓰도록 등록한다("코딩 에이전트에 적용하기" 참고)
+cargo install --git https://github.com/taehwandev/moru-narrow   # 또는 클론 폴더에서: cargo install --path .
+moru-narrow <이름> --repo /path/to/your/project                 # Kotlin+Gradle 또는 TypeScript, 자동 감지
+moru-narrow --install                                           # 선택: 코딩 에이전트에 스킬 등록
 ```
 
-설치하지 않고 쓰려면 저장소를 내려받아 `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <이름> --repo ...`로 실행한다.
-
-[PyPI](https://pypi.org/project/moru-narrow/)에 올라가 있고 npm에는 없다. `pip install moru-narrow`는 macOS의 깨끗한 가상환경에서 시험했다(버전 26.45.0, Python 3.9.6과 3.13 빌드). 다른 플랫폼은 시험하지 않았다. 최신 커밋을 따라가려면 Git에서 설치한다: `pipx install git+https://github.com/taehwandev/moru-narrow`.
+버전 태그(`vYY.WW.N`) 푸시 시 [GitHub Releases](https://github.com/taehwandev/moru-narrow/releases)에 플랫폼별 바이너리(`macOS ARM64`, `Linux x86_64`, `Windows x86_64`)가 배포된다. 이전 Python 패키지(`26.45.x`)는 `python` 브랜치에 아카이브되어 있다.
 
 ## 코딩 에이전트에 적용하기
 

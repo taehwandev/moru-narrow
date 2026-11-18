@@ -5,12 +5,11 @@
 > **rg tells you every line that mentions a name. moru-narrow tells you which of those lines you must edit.** It keeps every hit; it only changes the order and what is shown first.
 
 `moru-narrow` post-processes `rg -w <Name>` for coding agents and humans. It keeps every hit, ranks them, and prints the
-files and **line ranges** to check first. No index, no database, no model calls, no daemon. Python standard library and
-[ripgrep](https://github.com/BurntSushi/ripgrep) only.
+files and **line ranges** to check first. Native Rust binary—no index, no database, no model calls, no daemon, no Python runtime needed. Only [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on `PATH`.
 
-> Scope: **signature changes** (add or change a parameter, then find what breaks). It is not a general `rg` replacement: for renaming a variable, tracing a logic bug or searching a config string, use plain `rg`.
+> Scope: **contract changes & call-site blast radius** (parameter/return-type changes, method splits/deletions, and finding real callers without reading unrelated hits). It is not a general `rg` replacement: for renaming a variable, tracing a logic bug or searching a config string, use plain `rg`.
 >
-> Status: alpha / experimental. MIT license. The examples use the `moru-narrow` command (alias `mnarrow`); from a clone, run `python3 -m moru_narrow` instead.
+> Status: alpha / experimental. MIT license. Provides `moru-narrow` and alias `mnarrow`. (The legacy Python implementation is preserved on the `python` branch / `python-archive` tag.)
 
 ## In short
 
@@ -32,17 +31,15 @@ hidden: tier 2 has 0 files (use --all to list them)
 
 ## Quick start
 
-Needs Python 3.9+ and [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on your `PATH`. No other dependency. It does not need Moru Core or any other tool.
+Needs [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) on your `PATH` (and Rust `cargo` when building from source). It does not need Python, Moru Core, or any runtime daemon.
 
 ```bash
-pipx install moru-narrow     # or: uv tool install moru-narrow / pip install moru-narrow
-moru-narrow <Name> --repo /path/to/your/project                # Kotlin+Gradle or TypeScript, auto-detected
-moru-narrow --install        # optional: tell your coding agent to use it (see "Use with your coding agent")
+cargo install --git https://github.com/taehwandev/moru-narrow   # or from a clone: cargo install --path .
+moru-narrow <Name> --repo /path/to/your/project                 # Kotlin+Gradle or TypeScript, auto-detected
+moru-narrow --install                                           # optional: register the skill with your coding agent
 ```
 
-Without installing, from a clone: `git clone https://github.com/taehwandev/moru-narrow && cd moru-narrow && python3 -m moru_narrow <Name> --repo ...`.
-
-Published on [PyPI](https://pypi.org/project/moru-narrow/); not on npm. `pip install moru-narrow` was tested in a clean virtualenv on macOS (version 26.45.0, Python 3.9.6 and 3.13 builds); other platforms are untested. To follow the latest commit instead, install from Git: `pipx install git+https://github.com/taehwandev/moru-narrow`.
+Prebuilt release binaries (`macOS ARM64`, `Linux x86_64`, `Windows x86_64`) are published on [GitHub Releases](https://github.com/taehwandev/moru-narrow/releases) when version tags (`vYY.WW.N`) are pushed. The earlier Python package (`26.45.x` on PyPI) is archived on the `python` branch.
 
 ## Use with your coding agent
 
