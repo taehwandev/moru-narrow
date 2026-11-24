@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use regex::Regex;
 
 pub const RULE: &str = "\
-When a task changes a Kotlin (Gradle) or TypeScript function/constructor/method contract \
+When a task changes a Kotlin (Gradle), TypeScript, Python, or Rust function/constructor/method contract \
 (parameter, return type, visibility, deletion, or split) or inspects a symbol's real call-site blast radius, \
 run `moru-narrow <Name> --repo <project root>` once and inspect/edit the call sites listed under TIER 1. \
 Do not re-run `rg`/`grep` for the same name afterwards; use `--all` only if TIER 1 looks incomplete. \

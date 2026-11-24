@@ -1,9 +1,9 @@
 [package]
 name = "moru-narrow"
-version = "26.47.0"
+version = "26.48.0"
 edition = "2021"
 license = "MIT"
-description = "Rank ripgrep symbol hits into Tier 1 call sites for Kotlin (Gradle) and TypeScript"
+description = "Rank ripgrep symbol hits into Tier 1 call sites for Kotlin, TypeScript, Python, and Rust"
 repository = "https://github.com/taehwandev/moru-narrow"
 
 [[bin]]

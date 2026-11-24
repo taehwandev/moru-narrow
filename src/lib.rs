@@ -1,6 +1,8 @@
 pub mod gradleplugins;
 pub mod install;
 pub mod kotlin;
+pub mod python;
+pub mod rust_lang;
 pub mod tsresolve;
 pub mod typescript;
 
@@ -40,10 +42,20 @@ pub fn detect_lang(repo: &Path) -> Result<&'static str, String> {
     if has_root_gradle {
         return Ok("kotlin");
     }
+    if repo.join("Cargo.toml").exists() {
+        return Ok("rust");
+    }
+    if repo.join("pyproject.toml").exists()
+        || repo.join("setup.py").exists()
+        || repo.join("requirements.txt").exists()
+        || repo.join("scripts").is_dir()
+    {
+        return Ok("python");
+    }
     if repo.join("package.json").exists() {
         return Ok("ts");
     }
-    Err("moru-narrow: cannot detect the language (looked for tsconfig.json or a Gradle build at the repo root); pass --lang kotlin|ts".to_string())
+    Err("moru-narrow: cannot detect the language (looked for tsconfig.json, Gradle, Cargo.toml, or Python project files); pass --lang kotlin|ts|python|rust".to_string())
 }
 
 pub fn run_cli(argv: &[String]) -> Result<(), String> {
@@ -64,7 +76,7 @@ pub fn run_cli(argv: &[String]) -> Result<(), String> {
         match argv[i].as_str() {
             "-h" | "--help" => {
                 println!(
-                    "moru-narrow <Name> [--repo DIR] [--decl FILE] [--all] [--flow] [--json] [--lang kotlin|ts]\n\
+                    "moru-narrow <Name> [--repo DIR] [--decl FILE] [--all] [--flow] [--json] [--lang kotlin|ts|python|rust]\n\
                      moru-narrow --install [--target claude|agents|both] [--project] [--agents-md] [--force]"
                 );
                 return Ok(());
@@ -84,9 +96,9 @@ pub fn run_cli(argv: &[String]) -> Result<(), String> {
                 i += 1;
                 let v = argv
                     .get(i)
-                    .ok_or_else(|| "--lang requires kotlin or ts".to_string())?;
-                if v != "kotlin" && v != "ts" {
-                    return Err("--lang must be kotlin or ts".to_string());
+                    .ok_or_else(|| "--lang requires kotlin, ts, python, or rust".to_string())?;
+                if !matches!(v.as_str(), "kotlin" | "ts" | "python" | "rust") {
+                    return Err("--lang must be kotlin, ts, python, or rust".to_string());
                 }
                 lang = Some(v.clone());
             }
@@ -110,7 +122,7 @@ pub fn run_cli(argv: &[String]) -> Result<(), String> {
 
     let Some(symbol) = name else {
         return Err(
-            "usage: moru-narrow <Name> [--repo DIR] [--decl FILE] [--all] [--flow] [--json] [--lang kotlin|ts]"
+            "usage: moru-narrow <Name> [--repo DIR] [--decl FILE] [--all] [--flow] [--json] [--lang kotlin|ts|python|rust]"
                 .to_string(),
         );
     };
@@ -119,33 +131,51 @@ pub fn run_cli(argv: &[String]) -> Result<(), String> {
     let resolved_lang = match lang.as_deref() {
         Some("kotlin") => "kotlin",
         Some("ts") => "ts",
+        Some("python") => "python",
+        Some("rust") => "rust",
         _ => detect_lang(repo_path)?,
     };
 
     let decl_opt = if decls.is_empty() { None } else { Some(&decls) };
 
-    if resolved_lang == "kotlin" {
-        let mut r = kotlin::Repo::new(repo_path);
-        let res = kotlin::recommend(&mut r, &symbol, decl_opt);
-        if as_json {
-            println!(
-                "{}",
-                serde_json::to_string(&res.to_json()).unwrap_or_else(|_| "{}".to_string())
-            );
-        } else {
-            println!("{}", kotlin::render(&res, show_all));
+    match resolved_lang {
+        "kotlin" => {
+            let mut r = kotlin::Repo::new(repo_path);
+            let res = kotlin::recommend(&mut r, &symbol, decl_opt);
+            if as_json {
+                println!("{}", serde_json::to_string(&res.to_json()).unwrap_or_else(|_| "{}".into()));
+            } else {
+                println!("{}", kotlin::render(&res, show_all));
+            }
         }
-    } else {
-        let mut r = typescript::Repo::new(repo_path);
-        let res = typescript::recommend(&mut r, &symbol, decl_opt);
-        if as_json {
-            println!(
-                "{}",
-                serde_json::to_string(&res.to_json()).unwrap_or_else(|_| "{}".to_string())
-            );
-        } else {
-            println!("{}", typescript::render(&res, show_all, show_flow));
+        "ts" => {
+            let mut r = typescript::Repo::new(repo_path);
+            let res = typescript::recommend(&mut r, &symbol, decl_opt);
+            if as_json {
+                println!("{}", serde_json::to_string(&res.to_json()).unwrap_or_else(|_| "{}".into()));
+            } else {
+                println!("{}", typescript::render(&res, show_all, show_flow));
+            }
         }
+        "python" => {
+            let mut r = python::Repo::new(repo_path);
+            let res = python::recommend(&mut r, &symbol, decl_opt);
+            if as_json {
+                println!("{}", serde_json::to_string(&res.to_json()).unwrap_or_else(|_| "{}".into()));
+            } else {
+                println!("{}", python::render(&res, show_all));
+            }
+        }
+        "rust" => {
+            let mut r = rust_lang::Repo::new(repo_path);
+            let res = rust_lang::recommend(&mut r, &symbol, decl_opt);
+            if as_json {
+                println!("{}", serde_json::to_string(&res.to_json()).unwrap_or_else(|_| "{}".into()));
+            } else {
+                println!("{}", rust_lang::render(&res, show_all));
+            }
+        }
+        _ => unreachable!(),
     }
     Ok(())
 }

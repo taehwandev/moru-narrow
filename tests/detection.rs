@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use moru_narrow::{install, kotlin, typescript};
+use moru_narrow::{install, kotlin, python, rust_lang, typescript};
 use serde_json::json;
 use tempfile::TempDir;
 
@@ -271,4 +271,42 @@ fn install_updates_agents_md_idempotently() {
     install::update_agents_md(&agents_path).unwrap();
     let twice = fs::read_to_string(&agents_path).unwrap();
     assert_eq!(once, twice);
+}
+
+#[test]
+fn python_imports_distinguish_real_caller_from_unrelated() {
+    let tmp = TempDir::new().unwrap();
+    write_files(
+        tmp.path(),
+        &[
+            ("pyproject.toml", "[project]\nname = \"demo\"\n"),
+            ("scripts/auth.py", "def verify(token: str) -> bool:\n    return bool(token)\n"),
+            ("scripts/app.py", "from auth import verify\ndef run():\n    return verify('ok')\n"),
+            ("scripts/other.py", "def unrelated():\n    return verify('nope')\n"),
+        ],
+    );
+    let mut repo = python::Repo::new(tmp.path());
+    let decls = BTreeSet::from(["scripts/auth.py".to_string()]);
+    let res = python::recommend(&mut repo, "verify", Some(&decls));
+    assert!(res.tiers[0].contains_key("scripts/app.py"));
+    assert!(!res.tiers[0].contains_key("scripts/other.py"));
+}
+
+#[test]
+fn rust_use_distinguishes_real_caller_from_unrelated() {
+    let tmp = TempDir::new().unwrap();
+    write_files(
+        tmp.path(),
+        &[
+            ("Cargo.toml", "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n"),
+            ("src/parser.rs", "pub fn parse_item(s: &str) -> usize { s.len() }\n"),
+            ("src/main.rs", "mod parser;\nuse crate::parser::parse_item;\nfn main() { let _ = parse_item(\"a\"); }\n"),
+            ("src/other.rs", "// parse_item comment only\n"),
+        ],
+    );
+    let mut repo = rust_lang::Repo::new(tmp.path());
+    let decls = BTreeSet::from(["src/parser.rs".to_string()]);
+    let res = rust_lang::recommend(&mut repo, "parse_item", Some(&decls));
+    assert!(res.tiers[0].contains_key("src/main.rs"));
+    assert!(!res.tiers[0].contains_key("src/other.rs"));
 }
